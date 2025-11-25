@@ -1,0 +1,1698 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>Buckets: Dial Algorithm Visualization</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="visualPages.css">
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #f5f7fb;
+      --panel: #ffffff;
+      --accent: #4a6fa5;
+      --accent-strong: #f39c12;
+      --settled: #27ae60;
+      --text: #1f2a44;
+      --muted: #6c7a89;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", "PingFang SC", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    header {
+      background: #173f5f;
+      color: #fff;
+      padding: 1.2rem 2rem;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1.5rem;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 1.6rem;
+    }
+
+    .school-badge {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.4rem 0.9rem 0.4rem 0.4rem;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.15);
+      backdrop-filter: blur(4px);
+    }
+
+    .school-logo {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      display: block;
+      pointer-events: none;
+    }
+
+    .school-badge-text {
+      display: flex;
+      flex-direction: column;
+      line-height: 1.2;
+    }
+
+    .school-name-cn {
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+
+    .school-name-en {
+      font-size: 0.75rem;
+      opacity: 0.85;
+      letter-spacing: 0.05em;
+    }
+
+    main {
+      flex: 1;
+      padding: 0 1.5rem 2rem;
+    }
+
+    .graph-panel {
+      background: var(--panel);
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(23, 63, 95, 0.08);
+      padding: 1.5rem;
+    }
+
+    .side-panel {
+      flex: 1 1 320px;
+      background: var(--panel);
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(23, 63, 95, 0.08);
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      min-width: 280px;
+    }
+
+    h2 {
+      margin: 0 0 1rem;
+      font-size: 1.2rem;
+      letter-spacing: 0.04em;
+    }
+
+    #graphSvg {
+      width: 100%;
+      height: 420px;
+      border-radius: 12px;
+      background: radial-gradient(circle at top, #fefefe, #edf2fb);
+    }
+
+    .bucket-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 0.8rem;
+    }
+
+    .bucket-mode-toggle {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      font-size: 0.9rem;
+      color: var(--muted);
+    }
+
+    .bucket-mode-toggle select {
+      flex: 1;
+      padding: 0.35rem 0.5rem;
+      border-radius: 10px;
+      border: 1px solid #d1d9e6;
+      background: #fff;
+      color: var(--text);
+    }
+
+    .bucket-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+      max-height: 400px;
+      overflow-y: auto;
+      padding-right: 0.5rem;
+    }
+    
+    .bucket-list::-webkit-scrollbar {
+      width: 6px;
+    }
+    
+    .bucket-list::-webkit-scrollbar-track {
+      background: #f1f1f1;
+      border-radius: 3px;
+    }
+    
+    .bucket-list::-webkit-scrollbar-thumb {
+      background: #888;
+      border-radius: 3px;
+    }
+    
+    .bucket-list::-webkit-scrollbar-thumb:hover {
+      background: #555;
+    }
+
+    .bucket-row {
+      display: grid;
+      grid-template-columns: 60px 1fr;
+      padding: 0.4rem 0.8rem;
+      border-radius: 12px;
+      background: #f6f8fb;
+      border: 1px solid transparent;
+      transition: border 0.2s, transform 0.2s;
+    }
+
+    .bucket-row.min {
+      border-color: var(--accent);
+      transform: translateX(4px);
+      box-shadow: 0 4px 12px rgba(74, 111, 165, 0.15);
+    }
+
+    .bucket-row.scanning {
+      border-color: var(--accent-strong);
+      background: #fff5e6;
+    }
+
+    .bucket-row.scan-found {
+      border-color: var(--settled);
+      background: #ecf9f1;
+      box-shadow: 0 4px 12px rgba(39, 174, 96, 0.2);
+    }
+
+    .bucket-index {
+      font-weight: 600;
+      color: var(--muted);
+      letter-spacing: 0.08em;
+    }
+
+    .bucket-content {
+      color: var(--text);
+      font-size: 0.95rem;
+    }
+
+    .current-info {
+      background: #fef9f0;
+      border: 1px solid #ffe0b2;
+      border-radius: 12px;
+      padding: 1rem;
+      line-height: 1.6;
+    }
+
+    .controls {
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+    }
+
+    button {
+      flex: 1 1 90px;
+      padding: 0.6rem 0.8rem;
+      font-size: 0.95rem;
+      border: none;
+      border-radius: 12px;
+      background: var(--accent);
+      color: #fff;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    button:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    }
+
+    button:active:not(:disabled) {
+      transform: translateY(0);
+    }
+
+    button:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    #playPauseBtn.playing {
+      background: #e74c3c;
+    }
+
+    #speedSlider {
+      -webkit-appearance: none;
+      appearance: none;
+      height: 6px;
+      border-radius: 3px;
+      background: #e0e0e0;
+      outline: none;
+    }
+
+    #speedSlider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--accent);
+      cursor: pointer;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    #speedSlider::-moz-range-thumb {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--accent);
+      cursor: pointer;
+      border: none;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    .step-text {
+      margin-top: 0.4rem;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .node-label {
+      font-weight: 700;
+      pointer-events: none;
+      transition: all 0.2s ease;
+    }
+
+    .dist-label {
+      pointer-events: none;
+      font-size: 0.85rem;
+      fill: var(--muted);
+      transition: all 0.2s ease;
+    }
+
+    .node circle {
+      transition: all 0.3s ease;
+    }
+
+    .node:hover circle {
+      r: 28;
+      filter: brightness(1.1);
+    }
+
+    @media (max-width: 960px) {
+      main {
+        flex-direction: column;
+      }
+
+      .graph-panel,
+      .side-panel {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Buckets: Dial Algorithm Demo</h1>
+    <div class="school-badge">
+      <img src="bit.png" alt="Beijing Institute of Technology Emblem" class="school-logo">
+      <div class="school-badge-text">
+        <span class="school-name-cn">北京理工大学</span>
+        <span class="school-name-en">Beijing Institute of Technology</span>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div style="display:flex;gap:1.5rem;flex-wrap:wrap;flex:1;">
+      <div style="flex:2 1 520px;min-width:520px;display:flex;flex-direction:column;gap:1rem;">
+        <section class="graph-panel">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+            <h2 style="margin:0;">Weighted Directed Graph (Draggable Nodes)</h2>
+            <div class="graph-controls" style="display:flex;gap:0.5rem;align-items:center;">
+              <label style="font-size:0.9rem;">Nodes:</label>
+              <input type="number" id="nodeCountInput" value="7" min="2" max="15" style="width:60px;padding:0.3rem;border:1px solid #ccc;border-radius:6px;">
+              <label style="font-size:0.9rem;">Edges:</label>
+              <input type="number" id="edgeCountInput" value="11" min="1" max="50" style="width:60px;padding:0.3rem;border:1px solid #ccc;border-radius:6px;">
+              <button id="generateGraphBtn" style="padding:0.4rem 0.8rem;font-size:0.9rem;background:#27ae60;color:#fff;border:none;border-radius:6px;cursor:pointer;">Generate Random Graph</button>
+            </div>
+          </div>
+          <svg id="graphSvg" viewBox="0 0 720 460">
+            <defs>
+              <marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="#9aa6c0"></path>
+              </marker>
+            </defs>
+          </svg>
+        </section>
+
+        <div style="display:flex;gap:1rem;flex-wrap:wrap;">
+          <section class="controls" style="flex:1 1 300px;background:var(--panel);border-radius:16px;box-shadow:0 10px 30px rgba(23,63,95,0.08);padding:1.5rem;">
+            <h3 style="margin:0 0 1rem;font-size:1rem;">Control Panel</h3>
+            <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+              <button id="prevBtn" style="flex:1 1 90px;">⏮ Previous</button>
+              <button id="nextBtn" style="flex:1 1 90px;">Next ⏭</button>
+              <button id="playPauseBtn" style="flex:1 1 90px;background:#27ae60;">▶ Play</button>
+            </div>
+            <div style="margin-top:0.5rem;display:flex;align-items:center;gap:0.5rem;">
+              <label style="font-size:0.85rem;flex-shrink:0;">Speed:</label>
+              <input type="range" id="speedSlider" min="100" max="2000" value="800" step="100" style="flex:1;">
+              <span id="speedValue" style="font-size:0.85rem;min-width:40px;text-align:right;">0.8s</span>
+            </div>
+            <button id="resetBtn" style="flex-basis:100%;background:#b53f45;margin-top:0.5rem;">🔄 Reset</button>
+          </section>
+
+          <section class="stats-panel" style="flex:1 1 200px;background:var(--panel);border-radius:16px;box-shadow:0 10px 30px rgba(23,63,95,0.08);padding:1.5rem;">
+            <h3 style="margin:0 0 0.8rem;font-size:1rem;">Statistics</h3>
+            <div id="statsInfo" style="font-size:0.9rem;line-height:1.8;color:var(--muted);"></div>
+          </section>
+
+          <section class="legend-panel" style="flex:1 1 200px;background:var(--panel);border-radius:16px;box-shadow:0 10px 30px rgba(23,63,95,0.08);padding:1.5rem;">
+            <h3 style="margin:0 0 0.8rem;font-size:1rem;">Legend</h3>
+            <div style="font-size:0.85rem;line-height:2;">
+              <div style="display:flex;align-items:center;gap:0.5rem;">
+                <div style="width:20px;height:20px;border-radius:50%;background:#4a6fa5;border:2px solid #1f2a44;"></div>
+                <span>Unvisited Node</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:0.5rem;">
+                <div style="width:20px;height:20px;border-radius:50%;background:#f39c12;border:3px solid #1f2a44;"></div>
+                <span>Current Node</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:0.5rem;">
+                <div style="width:20px;height:20px;border-radius:50%;background:#27ae60;border:2px solid #1f2a44;"></div>
+                <span>Settled Node</span>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+
+      <aside class="side-panel">
+        <section class="bucket-panel">
+          <h2 id="bucketTitle">Bucket Structure (C = 5)</h2>
+          <div class="bucket-mode-toggle">
+            <label for="minBucketModeSelect">min_bucket Mode:</label>
+            <select id="minBucketModeSelect">
+              <option value="tracked">Track min bucket</option>
+              <option value="scan">Sequential scan</option>
+            </select>
+          </div>
+          <div id="bucketList" class="bucket-list"></div>
+          <div class="step-text">min_bucket highlights the current smallest non-empty bucket.</div>
+        </section>
+
+        <section class="current-info">
+          <div id="stepCounter"></div>
+          <div style="width:100%;height:6px;background:#e0e0e0;border-radius:3px;margin:0.5rem 0;overflow:hidden;">
+            <div id="progressBar" style="height:100%;background:linear-gradient(90deg, #4a6fa5, #27ae60);width:0%;transition:width 0.3s ease;"></div>
+          </div>
+          <div id="currentAction" style="font-weight:600;margin-top:0.2rem;"></div>
+          <p id="stepDescription" style="margin:0.5rem 0 0;"></p>
+          <p id="minBucketLabel" style="margin:0.6rem 0 0;font-weight:600;color:var(--accent);"></p>
+        </section>
+      </aside>
+    </div>
+  </main>
+
+  <script>
+    /**
+     * Dial's Algorithm Visualization - Single-Level Buckets
+     * 
+     * This file implements an interactive visualization of Dial's algorithm
+     * for finding shortest paths in weighted graphs using a single-level bucket structure.
+     * 
+     * Features:
+     * - Interactive graph with draggable nodes
+     * - Step-by-step algorithm visualization
+     * - Real-time bucket structure display
+     * - Play/Pause controls with speed adjustment
+     * - Random graph generation
+     * - Two visualization modes: tracked min_bucket or sequential scan
+     * 
+     * Algorithm: Dial's algorithm (Dijkstra variant for integer weights)
+     * Data Structure: Array of buckets, where bucket[i] contains nodes with distance i
+     */
+
+    /**
+     * Calculate the maximum bucket index C for Dial's algorithm
+     * C = max edge weight × (node count - 1)
+     * 
+     * Why max edge weight × (node count - 1)?
+     * 1. Dial's algorithm uses a bucket array where bucket index = node distance
+     * 2. The shortest path from source to any node traverses at most (node count - 1) edges
+     *    (since paths cannot have repeated nodes, at most all nodes are visited)
+     * 3. In the worst case, every edge has the maximum edge weight
+     * 4. Therefore, worst-case maximum distance = max edge weight × (node count - 1)
+     * 
+     * Example: 10 nodes, max edge weight = 50
+     * Worst case: source -> node2 -> node3 -> ... -> node10 (9 edges)
+     * Maximum distance = 50 × 9 = 450
+     * So C must be at least 450 to ensure all reachable nodes fit in buckets
+     * 
+     * @returns {number} The calculated C value (minimum 5, maximum 200)
+     */
+    function calculateC() {
+      if (graph.edges.length === 0) return 5;
+      const maxEdgeWeight = Math.max(...graph.edges.map(e => e.weight));
+      const maxPossibleDist = maxEdgeWeight * (graph.nodes.length - 1);
+      // Clamp to at least 5 and at most 200 to avoid excessive bucket counts
+      // Larger values can be supported by switching to a dynamic bucket array
+      return Math.min(Math.max(5, maxPossibleDist), 200);
+    }
+    // Algorithm parameters
+    let C = 5; // Maximum bucket index, calculated dynamically based on graph
+    
+    // DOM element references
+    const svg = document.getElementById('graphSvg');
+    const bucketListEl = document.getElementById('bucketList');
+    const stepCounterEl = document.getElementById('stepCounter');
+    const actionEl = document.getElementById('currentAction');
+    const descriptionEl = document.getElementById('stepDescription');
+    const minBucketLabelEl = document.getElementById('minBucketLabel');
+    const minBucketModeSelect = document.getElementById('minBucketModeSelect');
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    const resetBtn = document.getElementById('resetBtn');
+
+    // Visualization mode: 'tracked' (highlight min bucket) or 'scan' (animate scanning)
+    let minBucketMode = minBucketModeSelect ? minBucketModeSelect.value : 'tracked';
+
+    // Default graph structure: nodes with positions and edges with weights
+    let graph = {
+      nodes: [
+        { id: 1, label: '1', x: 80, y: 220 },
+        { id: 2, label: '2', x: 220, y: 120 },
+        { id: 3, label: '3', x: 260, y: 220 },
+        { id: 4, label: '4', x: 180, y: 340 },
+        { id: 5, label: '5', x: 420, y: 120 },
+        { id: 6, label: '6', x: 460, y: 220 },
+        { id: 7, label: '7', x: 620, y: 220 }
+      ],
+      edges: [
+        { id: '1-2', from: 1, to: 2, weight: 3 },
+        { id: '1-3', from: 1, to: 3, weight: 1 },
+        { id: '1-4', from: 1, to: 4, weight: 1 },
+        { id: '2-5', from: 2, to: 5, weight: 1 },
+        { id: '2-3', from: 2, to: 3, weight: 1 },
+        { id: '3-6', from: 3, to: 6, weight: 5 },
+        { id: '4-6', from: 4, to: 6, weight: 2 },
+        { id: '4-7', from: 4, to: 7, weight: 3 },
+        { id: '5-6', from: 5, to: 6, weight: 6 },
+        { id: '5-7', from: 5, to: 7, weight: 2 },
+        { id: '6-7', from: 6, to: 7, weight: 2 }
+      ]
+    };
+
+    /**
+     * Generate a random undirected graph with specified node and edge counts
+     * Ensures connectivity by first creating a spanning tree, then adding random edges
+     * Uses force-directed layout to position nodes without overlap
+     * 
+     * @param {number} nodeCount - Number of nodes (2-15)
+     * @param {number} edgeCount - Number of edges (must be at least nodeCount-1 for spanning tree)
+     * @returns {Object} Graph object with nodes and edges arrays
+     */
+    function generateRandomGraph(nodeCount, edgeCount) {
+      const nodes = [];
+      const edges = [];
+      const edgeSet = new Set(); // Prevent duplicate edges
+      
+      // Improved layout selection based on node count
+      const svgWidth = 720;
+      const svgHeight = 460;
+      const padding = 80; // Outer margin around the SVG
+      const minNodeDistance = 100; // Minimum spacing between nodes
+      
+      // Choose layout strategy based on node count
+      let nodePositions = [];
+      
+      if (nodeCount <= 6) {
+        // For small graphs, use an optimized circular layout
+        const centerX = svgWidth / 2;
+        const centerY = svgHeight / 2;
+        // Compute radius to maintain spacing between nodes
+        const minRadius = (minNodeDistance * nodeCount) / (2 * Math.PI);
+        const maxRadius = Math.min(150, (Math.min(svgWidth, svgHeight) - 2 * padding) / 2);
+        const radius = Math.max(minRadius, maxRadius * 0.7);
+        for (let i = 1; i <= nodeCount; i++) {
+          const angle = (2 * Math.PI * (i - 1)) / nodeCount - Math.PI / 2; // Start from the top
+          const x = centerX + radius * Math.cos(angle);
+          const y = centerY + radius * Math.sin(angle);
+          nodePositions.push({ id: i, x: x, y: y });
+        }
+      } else if (nodeCount <= 10) {
+        // Medium graphs: use dual-ring circular layout
+        const centerX = svgWidth / 2;
+        const centerY = svgHeight / 2;
+        const maxRadius = Math.min(180, (Math.min(svgWidth, svgHeight) - 2 * padding) / 2);
+        const outerCount = Math.ceil(nodeCount * 0.6); // Place more nodes on the outer ring
+        const innerCount = nodeCount - outerCount;
+        
+        // Compute outer radius to maintain spacing
+        const outerMinRadius = (minNodeDistance * outerCount) / (2 * Math.PI);
+        const outerRadius = Math.max(outerMinRadius, maxRadius * 0.85);
+        
+        // Compute inner radius to keep separation between rings
+        const innerMinRadius = Math.max(outerRadius * 0.4, (minNodeDistance * innerCount) / (2 * Math.PI));
+        const innerRadius = Math.min(innerMinRadius, outerRadius - minNodeDistance * 0.6);
+        
+        // Outer ring nodes
+        for (let i = 0; i < outerCount; i++) {
+          const angle = (2 * Math.PI * i) / outerCount - Math.PI / 2;
+          const x = centerX + outerRadius * Math.cos(angle);
+          const y = centerY + outerRadius * Math.sin(angle);
+          nodePositions.push({ id: i + 1, x: x, y: y });
+        }
+        
+        // Inner ring nodes (offset angles to avoid alignment)
+        for (let i = 0; i < innerCount; i++) {
+          const angle = (2 * Math.PI * i) / innerCount - Math.PI / 2 + (innerCount > 1 ? Math.PI / innerCount : 0);
+          const x = centerX + innerRadius * Math.cos(angle);
+          const y = centerY + innerRadius * Math.sin(angle);
+          nodePositions.push({ id: outerCount + i + 1, x: x, y: y });
+        }
+      } else {
+        // Dense graphs: use an optimized grid layout
+        // Determine grid size from minimum spacing
+        const availableWidth = svgWidth - 2 * padding;
+        const availableHeight = svgHeight - 2 * padding;
+        const maxCols = Math.floor(availableWidth / minNodeDistance);
+        const maxRows = Math.floor(availableHeight / minNodeDistance);
+        
+        // Prevent the grid from becoming overly dense
+        const cols = Math.min(Math.ceil(Math.sqrt(nodeCount * 1.3)), maxCols);
+        const rows = Math.min(Math.ceil(nodeCount / cols), maxRows);
+        
+        // Recompute actual cell dimensions
+        const cellWidth = availableWidth / Math.max(cols, 1);
+        const cellHeight = availableHeight / Math.max(rows, 1);
+        
+        // Ensure cells are at least as large as the spacing requirement
+        const actualCellWidth = Math.max(cellWidth, minNodeDistance * 1.1);
+        const actualCellHeight = Math.max(cellHeight, minNodeDistance * 1.1);
+        
+        // Adjust layout if cells become too large
+        const totalWidth = actualCellWidth * cols;
+        const totalHeight = actualCellHeight * rows;
+        const startX = (svgWidth - totalWidth) / 2;
+        const startY = (svgHeight - totalHeight) / 2;
+        
+        for (let i = 1; i <= nodeCount; i++) {
+          const row = Math.floor((i - 1) / cols);
+          const col = (i - 1) % cols;
+          // Apply slight jitter to keep the grid organic
+          const offsetX = (Math.random() - 0.5) * actualCellWidth * 0.1;
+          const offsetY = (Math.random() - 0.5) * actualCellHeight * 0.1;
+          const x = startX + col * actualCellWidth + actualCellWidth / 2 + offsetX;
+          const y = startY + row * actualCellHeight + actualCellHeight / 2 + offsetY;
+          nodePositions.push({ id: i, x: x, y: y });
+        }
+      }
+      
+      // Apply force-directed smoothing to avoid overlap
+      for (let iter = 0; iter < 150; iter++) {
+        for (let i = 0; i < nodePositions.length; i++) {
+          let fx = 0, fy = 0;
+          for (let j = 0; j < nodePositions.length; j++) {
+            if (i === j) continue;
+            const dx = nodePositions[i].x - nodePositions[j].x;
+            const dy = nodePositions[i].y - nodePositions[j].y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            
+            // Force separation if nodes overlap or are extremely close
+            if (dist < 0.1) {
+              // Use a random direction to push nodes apart
+              const angle = Math.random() * 2 * Math.PI;
+              fx += Math.cos(angle) * minNodeDistance;
+              fy += Math.sin(angle) * minNodeDistance;
+            } else if (dist < minNodeDistance) {
+              // Apply strong repulsive force to enforce spacing
+              const force = (minNodeDistance - dist) / dist * 2.0; // Stronger repulsion
+              fx += (dx / dist) * force;
+              fy += (dy / dist) * force;
+            } else if (dist < minNodeDistance * 1.2) {
+              // Apply gentle repulsion to preserve spacing
+              const force = (minNodeDistance * 1.2 - dist) / (minNodeDistance * 0.2) * 0.3;
+              fx += (dx / dist) * force;
+              fy += (dy / dist) * force;
+            }
+          }
+          
+          // Soft boundary constraints to avoid squeezing nodes
+          const boundaryPadding = padding + 20; // Extra padding near edges
+          if (nodePositions[i].x < boundaryPadding) {
+            fx += (boundaryPadding - nodePositions[i].x) * 0.1;
+          }
+          if (nodePositions[i].x > svgWidth - boundaryPadding) {
+            fx -= (nodePositions[i].x - (svgWidth - boundaryPadding)) * 0.1;
+          }
+          if (nodePositions[i].y < boundaryPadding) {
+            fy += (boundaryPadding - nodePositions[i].y) * 0.1;
+          }
+          if (nodePositions[i].y > svgHeight - boundaryPadding) {
+            fy -= (nodePositions[i].y - (svgHeight - boundaryPadding)) * 0.1;
+          }
+          
+          // Apply force with damping to keep the layout stable
+          const damping = 0.8; // Damping factor for stability
+          const maxMove = Math.max(10, minNodeDistance * 0.1);
+          const moveX = Math.max(-maxMove, Math.min(maxMove, fx * damping));
+          const moveY = Math.max(-maxMove, Math.min(maxMove, fy * damping));
+          nodePositions[i].x += moveX;
+          nodePositions[i].y += moveY;
+        }
+      }
+      
+      // Final pass: ensure all node distances exceed the minimum spacing
+      for (let pass = 0; pass < 50; pass++) {
+        let hasOverlap = false;
+        for (let i = 0; i < nodePositions.length; i++) {
+          for (let j = i + 1; j < nodePositions.length; j++) {
+            const dx = nodePositions[i].x - nodePositions[j].x;
+            const dy = nodePositions[i].y - nodePositions[j].y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            
+            if (dist < minNodeDistance) {
+              hasOverlap = true;
+              // Force the pair apart
+              const angle = dist < 0.1 ? Math.random() * 2 * Math.PI : Math.atan2(dy, dx);
+              const separation = (minNodeDistance - dist) / 2;
+              nodePositions[i].x += Math.cos(angle) * separation;
+              nodePositions[i].y += Math.sin(angle) * separation;
+              nodePositions[j].x -= Math.cos(angle) * separation;
+              nodePositions[j].y -= Math.sin(angle) * separation;
+            }
+          }
+        }
+        if (!hasOverlap) break;
+      }
+      
+      // Build node objects while clamping to the drawable region
+      for (const pos of nodePositions) {
+        nodes.push({ 
+          id: pos.id, 
+          label: String(pos.id), 
+          x: Math.max(padding + 10, Math.min(svgWidth - padding - 10, pos.x)), 
+          y: Math.max(padding + 10, Math.min(svgHeight - padding - 10, pos.y))
+        });
+      }
+      
+      // Final validation: verify spacing once more
+      for (let i = 0; i < nodes.length; i++) {
+        for (let j = i + 1; j < nodes.length; j++) {
+          const dx = nodes[i].x - nodes[j].x;
+          const dy = nodes[i].y - nodes[j].y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < minNodeDistance * 0.8) {
+            // Push nodes apart if they are still too close
+            const angle = dist < 0.1 ? Math.random() * 2 * Math.PI : Math.atan2(dy, dx);
+            const separation = (minNodeDistance * 0.8 - dist) / 2;
+            nodes[i].x += Math.cos(angle) * separation;
+            nodes[i].y += Math.sin(angle) * separation;
+            nodes[j].x -= Math.cos(angle) * separation;
+            nodes[j].y -= Math.sin(angle) * separation;
+          }
+        }
+      }
+      
+      // Helper to keep edge weights within 1-20
+      const randomWeight = () => Math.floor(Math.random() * 20) + 1;
+
+      // Ensure all nodes are reachable from source (node 1) by building a spanning tree
+      const sourceNode = 1;
+      const visited = new Set([sourceNode]);
+      const unvisited = new Set();
+      for (let i = 2; i <= nodeCount; i++) {
+        unvisited.add(i);
+      }
+      
+      // Create spanning tree edges (treating the graph as undirected, normalize IDs)
+      while (unvisited.size > 0) {
+        const from = Array.from(visited)[Math.floor(Math.random() * visited.size)];
+        const to = Array.from(unvisited)[Math.floor(Math.random() * unvisited.size)];
+        const weight = randomWeight(); // Keep weights between 1 and 20
+        // Normalize: ensure from < to for undirected representation
+        const [minNode, maxNode] = from < to ? [from, to] : [to, from];
+        const edgeId = `${minNode}-${maxNode}`;
+        edges.push({ id: edgeId, from: minNode, to: maxNode, weight: weight });
+        edgeSet.add(edgeId);
+        visited.add(to);
+        unvisited.delete(to);
+      }
+      
+      // Add remaining random edges (undirected, normalized IDs)
+      const maxEdges = nodeCount * (nodeCount - 1) / 2; // Maximum edges for an undirected graph
+      const remainingEdges = Math.min(edgeCount - edges.length, maxEdges - edges.length);
+      
+      for (let i = 0; i < remainingEdges; i++) {
+        let attempts = 0;
+        let from, to, edgeId;
+        do {
+          from = Math.floor(Math.random() * nodeCount) + 1;
+          to = Math.floor(Math.random() * nodeCount) + 1;
+          if (from === to) continue; // Skip self loops
+          // Normalize to ensure from < to
+          const [minNode, maxNode] = from < to ? [from, to] : [to, from];
+          edgeId = `${minNode}-${maxNode}`;
+          attempts++;
+          if (attempts > 100) break; // Avoid infinite loops
+        } while (edgeSet.has(edgeId));
+        
+        if (attempts <= 100) {
+          const weight = randomWeight(); // Keep weights between 1 and 20
+          // Normalize to ensure from < to
+          const [minNode, maxNode] = from < to ? [from, to] : [to, from];
+          edges.push({ id: edgeId, from: minNode, to: maxNode, weight: weight });
+          edgeSet.add(edgeId);
+        }
+      }
+      
+      return { nodes, edges };
+    }
+
+    /**
+     * Generate all steps for Dial's algorithm execution
+     * Implements Dial's algorithm for shortest paths in a weighted graph
+     * Uses bucket-based data structure for efficient node extraction
+     * 
+     * Algorithm steps:
+     * 1. Initialize source node with distance 0 in bucket 0
+     * 2. While buckets are not empty:
+     *    a. Find minimum non-empty bucket (min_bucket)
+     *    b. Extract node from min_bucket (ExtractMin)
+     *    c. Mark node as settled (shortest path found)
+     *    d. Relax all adjacent edges:
+     *       - If neighbor unvisited: Insert into appropriate bucket
+     *       - If shorter path found: DecreaseKey (move to lower bucket)
+     * 3. All reachable nodes now have shortest paths
+     * 
+     * @param {number} sourceNode - Starting node ID (typically 1)
+     * @returns {Array} Array of step objects describing algorithm execution
+     */
+    function generateDialSteps(sourceNode) {
+      // Recompute C dynamically for the current graph
+      C = calculateC();
+      const steps = [];
+      let buckets = Array.from({ length: C + 1 }, () => []);
+      const distances = Object.fromEntries(graph.nodes.map((n) => [n.id, Infinity]));
+      const settled = new Set();
+      const nodeInBucket = new Set(); // Track which nodes currently reside in buckets
+      
+      /**
+       * Dynamically expand bucket array if required index exceeds current capacity
+       * This handles cases where distances exceed the initial C estimate
+       * 
+       * @param {number} requiredIndex - Required bucket index
+       */
+      function ensureBucketCapacity(requiredIndex) {
+        if (requiredIndex > C) {
+          const oldC = C;
+          C = Math.max(C * 2, requiredIndex + 10); // Expand to required size plus buffer
+          const newBuckets = Array.from({ length: C + 1 }, () => []);
+          // Copy existing bucket contents
+          for (let i = 0; i <= oldC; i++) {
+            newBuckets[i] = buckets[i];
+          }
+          buckets = newBuckets;
+        }
+      }
+      
+      // Initialize source node
+      distances[sourceNode] = 0;
+      buckets[0].push(sourceNode);
+      nodeInBucket.add(sourceNode);
+      steps.push({
+        action: `Insert(${sourceNode}, 0)`,
+        type: 'insert',
+        node: sourceNode,
+        dist: 0,
+        description: `Initialize source node ${sourceNode}, distance = 0, place into bucket 0.`
+      });
+      
+      // Main loop: continue until all buckets are empty
+      while (true) {
+        // Locate the smallest non-empty bucket
+        let minBucket = -1;
+        for (let i = 0; i <= C; i++) {
+          if (buckets[i].length > 0) {
+            minBucket = i;
+            break;
+          }
+        }
+        
+        if (minBucket === -1) {
+          // All buckets empty: algorithm finished
+          break;
+        }
+        
+        // Extract node from the minimal bucket (FIFO order)
+        const currentNode = buckets[minBucket].shift();
+        nodeInBucket.delete(currentNode);
+        
+        if (settled.has(currentNode)) {
+          // Skip if node already settled (can happen after DecreaseKey)
+          continue;
+        }
+        
+        settled.add(currentNode);
+        steps.push({
+          action: `ExtractMin() -> ${currentNode}`,
+          type: 'extract',
+          node: currentNode,
+          description: `Bucket ${minBucket} is the current min_bucket; extract node ${currentNode} and mark it settled (shortest distance = ${distances[currentNode]}).`
+        });
+        
+        // Relax every adjacent edge (treat graph as undirected here)
+        const adjacentEdges = graph.edges.filter((e) => 
+          e.from === currentNode || e.to === currentNode
+        );
+        for (const edge of adjacentEdges) {
+          // Determine neighbor (edges can be stored either direction)
+          const neighbor = edge.from === currentNode ? edge.to : edge.from;
+          
+          // Skip neighbors already settled (Dijkstra invariant)
+          if (settled.has(neighbor)) {
+            continue;
+          }
+          
+          const newDist = distances[currentNode] + edge.weight;
+          
+          // Expand bucket array if distance exceeds current C
+          if (newDist > C) {
+            ensureBucketCapacity(newDist);
+          }
+          
+          if (distances[neighbor] === Infinity) {
+            // First-time visit for this node: insert into bucket
+            distances[neighbor] = newDist;
+            if (!buckets[newDist].includes(neighbor)) {
+              buckets[newDist].push(neighbor);
+              nodeInBucket.add(neighbor);
+            }
+            steps.push({
+              action: `Insert(${neighbor}, ${newDist})`,
+              type: 'insert',
+              node: neighbor,
+              dist: newDist,
+              description: `Relax edge ${currentNode}→${neighbor} (weight ${edge.weight}); node ${neighbor} now has distance ${newDist}, insert into bucket ${newDist}.`
+            });
+          } else if (newDist < distances[neighbor]) {
+            // Found a shorter path: perform DecreaseKey
+            const oldDist = distances[neighbor];
+            // Remove node from old bucket
+            const oldBucketIdx = buckets[oldDist].indexOf(neighbor);
+            if (oldBucketIdx !== -1) {
+              buckets[oldDist].splice(oldBucketIdx, 1);
+              nodeInBucket.delete(neighbor);
+            }
+            // Update distance and insert into new bucket
+            distances[neighbor] = newDist;
+            if (!buckets[newDist].includes(neighbor)) {
+              buckets[newDist].push(neighbor);
+              nodeInBucket.add(neighbor);
+            }
+            steps.push({
+              action: `DecreaseKey(${neighbor}, ${oldDist} → ${newDist})`,
+              type: 'decrease',
+              node: neighbor,
+              oldDist: oldDist,
+              newDist: newDist,
+              description: `Relax edge ${currentNode}→${neighbor} (weight ${edge.weight}); found shorter path for node ${neighbor}, distance ${oldDist} → ${newDist}, move from bucket ${oldDist} to bucket ${newDist}.`
+            });
+          }
+        }
+      }
+      
+      // Append final step indicating completion
+      steps.push({
+        action: 'Algorithm complete',
+        type: 'complete',
+        description: `All reachable nodes now have shortest paths. ${graph.nodes.filter(n => distances[n.id] !== Infinity).length} nodes are reachable.`
+      });
+      
+      return steps;
+    }
+
+    const initialState = () => ({
+      buckets: Array.from({ length: C + 1 }, () => []),
+      nodeDistances: Object.fromEntries(graph.nodes.map((n) => [n.id, Infinity])),
+      settled: [],
+      focusNode: null,
+      minBucket: -1,
+      description: 'Click "Next" to start simulating Dial\'s algorithm.',
+      action: 'Waiting to start'
+    });
+
+    function deepCloneState(state) {
+      return {
+        buckets: state.buckets.map((bucket) => bucket.slice()),
+        nodeDistances: { ...state.nodeDistances },
+        settled: state.settled.slice(),
+        focusNode: state.focusNode,
+        minBucket: state.minBucket,
+        description: state.description,
+        action: state.action
+      };
+    }
+
+    function findMinBucket(buckets) {
+      for (let i = 0; i < buckets.length; i++) {
+        if (buckets[i].length > 0) {
+          return i;
+        }
+      }
+      return -1;
+    }
+
+    function removeFromBucket(buckets, node) {
+      for (let i = 0; i < buckets.length; i++) {
+        const idx = buckets[i].indexOf(node);
+        if (idx !== -1) {
+          buckets[i].splice(idx, 1);
+          return i;
+        }
+      }
+      return -1;
+    }
+
+    function applyStep(prevState, step) {
+      const state = deepCloneState(prevState);
+
+      if (step.type === 'insert') {
+        const target = step.dist;
+        if (!state.buckets[target].includes(step.node)) {
+          state.buckets[target].push(step.node);
+        }
+        state.nodeDistances[step.node] = step.dist;
+        state.focusNode = step.node;
+      } else if (step.type === 'decrease') {
+        removeFromBucket(state.buckets, step.node);
+        if (!state.buckets[step.newDist].includes(step.node)) {
+          state.buckets[step.newDist].push(step.node);
+        }
+        state.nodeDistances[step.node] = step.newDist;
+        state.focusNode = step.node;
+      } else if (step.type === 'extract') {
+        const bucketIndex = removeFromBucket(state.buckets, step.node);
+        if (!state.settled.includes(step.node)) {
+          state.settled.push(step.node);
+        }
+        state.focusNode = step.node;
+      } else if (step.type === 'complete') {
+        state.focusNode = null;
+      }
+
+      state.minBucket = findMinBucket(state.buckets);
+      state.description = step.description;
+      state.action = step.action;
+      return state;
+    }
+
+    // Algorithm state tracking
+    let currentIndex = 0; // Current step index in the visualization
+    let steps = []; // Array of algorithm steps generated by generateDialSteps()
+    let history = []; // Array of states, one per step
+
+    /**
+     * Initialize the algorithm by generating steps and building state history
+     * Called when graph changes or algorithm resets
+     */
+    function initializeAlgorithm() {
+      steps = generateDialSteps(1);
+      history = [initialState()];
+      for (const step of steps) {
+        const lastState = history[history.length - 1];
+        history.push(applyStep(lastState, step));
+      }
+      currentIndex = 0;
+      // Update the displayed C value
+      const bucketTitleEl = document.getElementById('bucketTitle');
+      if (bucketTitleEl) {
+        bucketTitleEl.textContent = `Bucket Structure (C = ${C})`;
+      }
+    }
+
+    // Visualization data structures
+    const nodeElements = new Map(); // Maps node ID to SVG elements
+    const edgeElements = new Map(); // Maps edge ID to SVG elements
+    
+    // Scan animation parameters
+    const SCAN_TOTAL_BUDGET = 2400; // Total time budget for scan animation (ms)
+    const SCAN_MIN_DELAY = 60; // Minimum delay between scan steps (ms)
+    const SCAN_MAX_DELAY = 220; // Maximum delay between scan steps (ms)
+    let latestBucketRows = []; // DOM elements for bucket rows
+    let scanAnimationTimeouts = []; // Timeout IDs for scan animations
+
+    function clearGraph() {
+      // Remove all child nodes while preserving the <defs> element
+      const defs = svg.querySelector('defs');
+      svg.innerHTML = '';
+      if (defs) {
+        svg.appendChild(defs);
+      }
+      nodeElements.clear();
+      edgeElements.clear();
+    }
+
+    /**
+     * Render the graph visualization using SVG
+     * Creates nodes (circles with labels) and edges (lines with weight labels)
+     * Sets up drag-and-drop functionality for nodes
+     */
+    function renderGraph() {
+      clearGraph();
+      
+      const edgesLayer = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      edgesLayer.setAttribute('id', 'edgesLayer');
+      const nodesLayer = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      nodesLayer.setAttribute('id', 'nodesLayer');
+      svg.appendChild(edgesLayer);
+      svg.appendChild(nodesLayer);
+
+      graph.edges.forEach((edge) => {
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line.setAttribute('stroke', '#9aa6c0');
+        line.setAttribute('stroke-width', '2');
+        line.setAttribute('marker-end', 'url(#arrow)');
+
+        // Weight label background
+        const weightBg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        weightBg.setAttribute('fill', '#ffffff');
+        weightBg.setAttribute('stroke', '#4a5568');
+        weightBg.setAttribute('stroke-width', '1');
+        weightBg.setAttribute('rx', '3');
+        weightBg.setAttribute('ry', '3');
+        weightBg.setAttribute('opacity', '0.9');
+
+        // Weight label text
+        const weightText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        weightText.setAttribute('fill', '#1f2a44');
+        weightText.setAttribute('font-size', '14');
+        weightText.setAttribute('font-weight', '700');
+        weightText.setAttribute('text-anchor', 'middle');
+        weightText.setAttribute('dominant-baseline', 'middle');
+        weightText.textContent = edge.weight;
+
+        edgesLayer.appendChild(line);
+        edgesLayer.appendChild(weightBg);
+        edgesLayer.appendChild(weightText);
+        edgeElements.set(edge.id, { edge, line, weightText, weightBg });
+      });
+
+      graph.nodes.forEach((node) => {
+        const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        group.classList.add('node');
+        group.style.cursor = 'grab';
+
+        const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        circle.setAttribute('r', 26);
+        circle.setAttribute('stroke', '#1f2a44');
+        circle.setAttribute('stroke-width', '2');
+        circle.setAttribute('fill', '#4a6fa5');
+
+        const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        label.classList.add('node-label');
+        label.setAttribute('text-anchor', 'middle');
+        label.setAttribute('dominant-baseline', 'middle');
+        label.setAttribute('fill', '#fff');
+        label.textContent = node.label;
+
+        const distLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        distLabel.classList.add('dist-label');
+        distLabel.setAttribute('text-anchor', 'middle');
+        distLabel.textContent = 'dist = ∞';
+
+        group.appendChild(circle);
+        group.appendChild(label);
+        group.appendChild(distLabel);
+        nodesLayer.appendChild(group);
+
+        enableDrag(group, node);
+        
+        // Hover tooltip per node
+        let tooltip = null;
+        group.addEventListener('mouseenter', (e) => {
+          if (isDragging) return;
+          const state = history[currentIndex];
+          const dist = state ? state.nodeDistances[node.id] : Infinity;
+          const isSettled = state ? state.settled.includes(node.id) : false;
+          
+          // Build tooltip showing node status
+          tooltip = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+          const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+          rect.setAttribute('fill', '#1f2a44');
+          rect.setAttribute('opacity', '0.9');
+          rect.setAttribute('rx', '6');
+          rect.setAttribute('ry', '6');
+          
+          const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+          text.setAttribute('fill', '#fff');
+          text.setAttribute('font-size', '12');
+          text.setAttribute('font-weight', '600');
+          text.setAttribute('x', node.x);
+          text.setAttribute('y', node.y - 45);
+          text.setAttribute('text-anchor', 'middle');
+          text.textContent = `Node ${node.id}${isSettled ? ' (settled)' : ''}\nDistance: ${Number.isFinite(dist) ? dist : '∞'}`;
+          
+          const bbox = text.getBBox();
+          rect.setAttribute('x', bbox.x - 8);
+          rect.setAttribute('y', bbox.y - 4);
+          rect.setAttribute('width', bbox.width + 16);
+          rect.setAttribute('height', bbox.height + 8);
+          
+          tooltip.appendChild(rect);
+          tooltip.appendChild(text);
+          svg.appendChild(tooltip);
+        });
+        
+        group.addEventListener('mouseleave', () => {
+          if (tooltip && tooltip.parentNode) {
+            tooltip.parentNode.removeChild(tooltip);
+          }
+        });
+        
+        nodeElements.set(node.id, { node, group, circle, label, distLabel });
+      });
+
+      updateGraphGeometry();
+    }
+
+    function enableDrag(group, node) {
+      let isDragging = false;
+      let offsetX = 0;
+      let offsetY = 0;
+
+      group.addEventListener('pointerdown', (event) => {
+        isDragging = true;
+        group.setPointerCapture(event.pointerId);
+        const svgRect = svg.getBoundingClientRect();
+        offsetX = event.clientX - svgRect.left - node.x;
+        offsetY = event.clientY - svgRect.top - node.y;
+        group.style.cursor = 'grabbing';
+      });
+
+      group.addEventListener('pointermove', (event) => {
+        if (!isDragging) return;
+        const svgRect = svg.getBoundingClientRect();
+        node.x = event.clientX - svgRect.left - offsetX;
+        node.y = event.clientY - svgRect.top - offsetY;
+        updateGraphGeometry();
+      });
+
+      const stopDrag = (event) => {
+        if (!isDragging) return;
+        isDragging = false;
+        group.releasePointerCapture(event.pointerId);
+        group.style.cursor = 'grab';
+      };
+
+      group.addEventListener('pointerup', stopDrag);
+      group.addEventListener('pointerleave', stopDrag);
+    }
+
+    function updateGraphGeometry() {
+      // Pass 1: compute initial positions for weight labels
+      const edgePositions = [];
+      graph.edges.forEach((edge) => {
+        const start = graph.nodes.find((n) => n.id === edge.from);
+        const end = graph.nodes.find((n) => n.id === edge.to);
+        const edgeData = edgeElements.get(edge.id);
+        if (!edgeData) return;
+        
+        const dx = end.x - start.x;
+        const dy = end.y - start.y;
+        const edgeLength = Math.sqrt(dx * dx + dy * dy) || 1;
+        const nodeRadius = 26;
+        const minOffset = nodeRadius + 15;
+        const offset = Math.max(minOffset, edgeLength * 0.15);
+        const offsetRatio = Math.min(offset / edgeLength, 0.4);
+        
+        // Estimate text dimensions
+        const weightStr = String(edge.weight);
+        let charWidth = 9;
+        if (weightStr.length === 1) {
+          charWidth = 10;
+        } else if (weightStr.length === 2) {
+          charWidth = 9;
+        } else {
+          charWidth = 8.5;
+        }
+        const padding = 8;
+        const textWidth = Math.max(weightStr.length * charWidth + padding, 24);
+        const textHeight = 20;
+        
+        // Initial placement near the edge midpoint
+        let midX = start.x + dx * (0.5 + offsetRatio * 0.1);
+        let midY = start.y + dy * (0.5 + offsetRatio * 0.1);
+        
+        // Unit vector perpendicular to the edge for offsetting
+        const perpX = -dy / edgeLength;
+        const perpY = dx / edgeLength;
+        
+        edgePositions.push({
+          edge,
+          edgeData,
+          start,
+          end,
+          dx,
+          dy,
+          edgeLength,
+          midX,
+          midY,
+          perpX,
+          perpY,
+          textWidth,
+          textHeight,
+          weightStr
+        });
+      });
+      
+      // Pass 2: detect and resolve overlapping labels
+      for (let i = 0; i < edgePositions.length; i++) {
+        const pos1 = edgePositions[i];
+        let offset = 0;
+        let attempts = 0;
+        const maxAttempts = 10;
+        
+        // Check if weight labels overlap each other
+        while (attempts < maxAttempts) {
+          let hasOverlap = false;
+          const currentX = pos1.midX + pos1.perpX * offset;
+          const currentY = pos1.midY + pos1.perpY * offset;
+          
+          for (let j = 0; j < edgePositions.length; j++) {
+            if (i === j) continue;
+            const pos2 = edgePositions[j];
+            
+            // Basic rectangle overlap test
+            const distX = Math.abs(currentX - pos2.midX);
+            const distY = Math.abs(currentY - pos2.midY);
+            const minDistX = (pos1.textWidth + pos2.textWidth) / 2 + 5;
+            const minDistY = (pos1.textHeight + pos2.textHeight) / 2 + 5;
+            
+            if (distX < minDistX && distY < minDistY) {
+              hasOverlap = true;
+              break;
+            }
+          }
+          
+          if (!hasOverlap) break;
+          
+          // Try progressively larger offset distances
+          attempts++;
+          offset = (attempts % 2 === 0 ? 1 : -1) * (attempts / 2 + 1) * 25;
+        }
+        
+        // Store final offset positions
+        pos1.finalX = pos1.midX + pos1.perpX * offset;
+        pos1.finalY = pos1.midY + pos1.perpY * offset;
+      }
+      
+      // Pass 3: update the actual SVG elements
+      graph.edges.forEach((edge) => {
+        const edgeData = edgeElements.get(edge.id);
+        if (!edgeData) return;
+        const { line, weightText, weightBg } = edgeData;
+        
+        const pos = edgePositions.find(p => p.edge.id === edge.id);
+        if (!pos) return;
+        
+        const start = pos.start;
+        const end = pos.end;
+        
+        line.setAttribute('x1', start.x);
+        line.setAttribute('y1', start.y);
+        line.setAttribute('x2', end.x);
+        line.setAttribute('y2', end.y);
+        
+        // Position weight text
+        weightText.setAttribute('x', pos.finalX);
+        weightText.setAttribute('y', pos.finalY);
+        weightText.textContent = pos.weightStr;
+        
+        // Position label background rectangle
+        if (weightBg) {
+          weightBg.setAttribute('x', pos.finalX - pos.textWidth / 2);
+          weightBg.setAttribute('y', pos.finalY - pos.textHeight / 2);
+          weightBg.setAttribute('width', pos.textWidth);
+          weightBg.setAttribute('height', pos.textHeight);
+        }
+      });
+
+      nodeElements.forEach(({ node, circle, label, distLabel }) => {
+        // Update node, label, and distance positions (dragging can exceed bounds)
+        circle.setAttribute('cx', node.x);
+        circle.setAttribute('cy', node.y);
+        label.setAttribute('x', node.x);
+        label.setAttribute('y', node.y);
+        distLabel.setAttribute('x', node.x);
+        distLabel.setAttribute('y', node.y + 40);
+        
+        // Labels may clip if nodes leave the viewport; acceptable for this demo
+      });
+    }
+
+    /**
+     * Render the bucket structure display
+     * Shows all buckets with their contents (node IDs)
+     * Highlights the current min_bucket and scanning buckets
+     * 
+     * @param {Object} state - Current algorithm state
+     */
+    function renderBuckets(state) {
+      bucketListEl.innerHTML = '';
+      latestBucketRows = [];
+      state.buckets.forEach((bucket, index) => {
+        const row = document.createElement('div');
+        row.className = 'bucket-row';
+        row.dataset.index = index;
+
+        const idx = document.createElement('div');
+        idx.className = 'bucket-index';
+        idx.textContent = `Bucket ${index}`;
+
+        const content = document.createElement('div');
+        content.className = 'bucket-content';
+        content.textContent = bucket.length ? bucket.join(', ') : '∅';
+
+        row.appendChild(idx);
+        row.appendChild(content);
+        bucketListEl.appendChild(row);
+        latestBucketRows[index] = row;
+      });
+    }
+
+    function clearScanAnimation() {
+      scanAnimationTimeouts.forEach((id) => clearTimeout(id));
+      scanAnimationTimeouts = [];
+    }
+
+    function resetBucketRowClasses() {
+      latestBucketRows.forEach((row) => {
+        if (!row) return;
+        row.classList.remove('min', 'scanning', 'scan-found');
+      });
+    }
+
+    function applyBucketModeVisual(state, targetIndex, options = {}) {
+      const { shouldAnimate = (minBucketMode === 'scan') } = options;
+      clearScanAnimation();
+      resetBucketRowClasses();
+      if (targetIndex === -1) {
+        return;
+      }
+      if (minBucketMode === 'tracked' || !shouldAnimate) {
+        const row = latestBucketRows[targetIndex];
+        if (row && state.buckets[targetIndex] && state.buckets[targetIndex].length) {
+          row.classList.add('min');
+        }
+        return;
+      }
+      runScanVisualization(state, targetIndex);
+    }
+
+    function runScanVisualization(state, targetIndex) {
+      if (!latestBucketRows.length) return;
+      const limit = targetIndex === -1
+        ? latestBucketRows.length
+        : Math.min(latestBucketRows.length, targetIndex + 1);
+      const stepsToShow = Math.max(limit, 1);
+      const stepDelay = Math.max(
+        SCAN_MIN_DELAY,
+        Math.min(SCAN_MAX_DELAY, Math.round(SCAN_TOTAL_BUDGET / stepsToShow))
+      );
+      for (let i = 0; i < limit; i++) {
+        const row = latestBucketRows[i];
+        if (!row) continue;
+        const enterId = setTimeout(() => {
+          row.classList.add('scanning');
+          const isTarget = i === targetIndex && state.buckets[i] && state.buckets[i].length;
+          if (isTarget) {
+            row.classList.add('scan-found', 'min');
+            const exitId = setTimeout(() => {
+              row.classList.remove('scanning');
+            }, stepDelay);
+            scanAnimationTimeouts.push(exitId);
+          } else {
+            const exitId = setTimeout(() => {
+              row.classList.remove('scanning');
+            }, Math.max(20, stepDelay - 40));
+            scanAnimationTimeouts.push(exitId);
+          }
+        }, stepDelay * i);
+        scanAnimationTimeouts.push(enterId);
+      }
+    }
+
+    function updateNodeStyles(state) {
+      nodeElements.forEach(({ node, circle, distLabel }) => {
+        const dist = state.nodeDistances[node.id];
+        distLabel.textContent = Number.isFinite(dist) ? `dist = ${dist}` : 'dist = ∞';
+
+        if (state.focusNode === node.id) {
+          circle.setAttribute('fill', varColor('--accent-strong'));
+          circle.setAttribute('stroke-width', '3');
+        } else if (state.settled.includes(node.id)) {
+          circle.setAttribute('fill', varColor('--settled'));
+          circle.setAttribute('stroke-width', '2');
+        } else {
+          circle.setAttribute('fill', varColor('--accent'));
+          circle.setAttribute('stroke-width', '2');
+        }
+      });
+    }
+
+    function varColor(variable) {
+      return getComputedStyle(document.body).getPropertyValue(variable).trim() || '#4a6fa5';
+    }
+
+    function updateText(state, activeMinBucket) {
+      const totalSteps = steps.length > 0 ? steps.length - 1 : 0;
+      stepCounterEl.textContent = `Step ${currentIndex} / ${totalSteps}`;
+      actionEl.textContent = state.action || 'Waiting to start';
+      
+      let descText = state.description || 'Click "Next" to start simulating Dial\'s algorithm.';
+      // When finished, list all shortest-path distances
+      if (steps.length > 0 && currentIndex === steps.length - 1 && steps[steps.length - 1].type === 'complete') {
+        const distances = Object.entries(state.nodeDistances)
+          .filter(([id, dist]) => Number.isFinite(dist))
+          .sort(([a], [b]) => parseInt(a) - parseInt(b))
+          .map(([id, dist]) => `Node ${id}: ${dist}`)
+          .join(', ');
+        if (distances) {
+          descText += `\n\nShortest path results: ${distances}`;
+        }
+      }
+      descriptionEl.textContent = descText;
+      
+      if (minBucketMode === 'scan') {
+        minBucketLabelEl.textContent = 'Sequential scan mode: show bucket traversal only during ExtractMin().';
+        return;
+      }
+
+      const hasMin = activeMinBucket >= 0
+        && state.buckets[activeMinBucket]
+        && state.buckets[activeMinBucket].length;
+      minBucketLabelEl.textContent = hasMin
+        ? `Current min_bucket = ${activeMinBucket} (tracked)`
+        : 'Current min_bucket = ∅ (tracked)';
+    }
+
+    function updateButtons() {
+      prevBtn.disabled = currentIndex === 0;
+      nextBtn.disabled = steps.length === 0 || currentIndex >= steps.length - 1;
+    }
+
+    /**
+     * Render the complete visualization state
+     * Updates graph, buckets, node styles, text descriptions, and controls
+     * This is the main rendering function called on each step
+     */
+    function renderState() {
+      if (history.length === 0 || currentIndex >= history.length) {
+        return;
+      }
+      const state = history[currentIndex];
+      const recentStep = currentIndex > 0 ? steps[currentIndex - 1] : null;
+      const activeMinBucket = minBucketMode === 'tracked'
+        ? state.minBucket
+        : findMinBucket(state.buckets);
+      const shouldAnimateScan = minBucketMode === 'scan' && recentStep && recentStep.type === 'extract';
+      renderBuckets(state);
+      applyBucketModeVisual(state, activeMinBucket, { shouldAnimate: shouldAnimateScan });
+      updateNodeStyles(state);
+      updateText(state, activeMinBucket);
+      updateButtons();
+      updateProgress();
+      updateStats();
+    }
+
+    // Auto-play state management
+    let isPlaying = false; // Whether algorithm is currently auto-playing
+    let playInterval = null; // Interval ID for auto-play timer
+    const playPauseBtn = document.getElementById('playPauseBtn');
+    const speedSlider = document.getElementById('speedSlider');
+    const speedValue = document.getElementById('speedValue');
+    const progressBar = document.getElementById('progressBar');
+    const statsInfo = document.getElementById('statsInfo');
+
+    /**
+     * Update the progress bar to reflect current step position
+     */
+    function updateProgress() {
+      const progress = steps.length > 0 ? (currentIndex / (steps.length - 1)) * 100 : 0;
+      progressBar.style.width = progress + '%';
+    }
+
+    /**
+     * Update statistics panel with current algorithm state
+     * Shows: settled nodes, reachable nodes, total steps, current step
+     */
+    function updateStats() {
+      if (history.length === 0 || currentIndex >= history.length) return;
+      const state = history[currentIndex];
+      const settledCount = state.settled.length;
+      const totalNodes = graph.nodes.length;
+      const reachableNodes = Object.values(state.nodeDistances).filter(d => Number.isFinite(d)).length;
+      
+      statsInfo.innerHTML = `
+        <div><strong>Settled nodes:</strong> ${settledCount} / ${totalNodes}</div>
+        <div><strong>Reachable nodes:</strong> ${reachableNodes} / ${totalNodes}</div>
+        <div><strong>Total steps:</strong> ${steps.length - 1}</div>
+        <div><strong>Current step:</strong> ${currentIndex}</div>
+      `;
+    }
+
+    /**
+     * Toggle auto-play mode
+     * When playing, advances steps automatically at the configured speed
+     * When paused, stops automatic advancement
+     */
+    function togglePlay() {
+      if (isPlaying) {
+        // Pause
+        if (playInterval) {
+          clearInterval(playInterval);
+          playInterval = null;
+        }
+        isPlaying = false;
+        playPauseBtn.textContent = '▶ Play';
+        playPauseBtn.classList.remove('playing');
+      } else {
+        // Play
+        if (currentIndex >= steps.length - 1) {
+          currentIndex = 0;
+        }
+        isPlaying = true;
+        playPauseBtn.textContent = '⏸ Pause';
+        playPauseBtn.classList.add('playing');
+        
+        const speed = parseInt(speedSlider.value);
+        playInterval = setInterval(() => {
+          if (currentIndex >= steps.length - 1) {
+            togglePlay(); // Auto-pause when reaching the end
+            return;
+          }
+          currentIndex += 1;
+          renderState();
+        }, speed);
+      }
+    }
+
+    // Speed slider handler
+    speedSlider.addEventListener('input', (e) => {
+      const speed = parseInt(e.target.value);
+      speedValue.textContent = (speed / 1000).toFixed(1) + 's';
+      // Restart playback to apply new speed immediately
+      if (isPlaying) {
+        togglePlay();
+        togglePlay();
+      }
+    });
+
+    prevBtn.addEventListener('click', () => {
+      if (isPlaying) togglePlay(); // Pause playback before stepping
+      if (currentIndex === 0) return;
+      currentIndex -= 1;
+      renderState();
+    });
+
+    nextBtn.addEventListener('click', () => {
+      if (isPlaying) togglePlay(); // Pause playback before stepping
+      if (currentIndex >= steps.length - 1) return;
+      currentIndex += 1;
+      renderState();
+    });
+
+    resetBtn.addEventListener('click', () => {
+      if (isPlaying) togglePlay(); // Pause playback before stepping
+      currentIndex = 0;
+      renderState();
+    });
+
+    playPauseBtn.addEventListener('click', togglePlay);
+
+    if (minBucketModeSelect) {
+      minBucketModeSelect.addEventListener('change', (event) => {
+        minBucketMode = event.target.value;
+        // Re-render immediately to refresh highlighting or scan animation
+        renderState();
+      });
+    }
+
+    // Random graph generation controls
+    const generateGraphBtn = document.getElementById('generateGraphBtn');
+    const nodeCountInput = document.getElementById('nodeCountInput');
+    const edgeCountInput = document.getElementById('edgeCountInput');
+
+    generateGraphBtn.addEventListener('click', () => {
+      const nodeCount = parseInt(nodeCountInput.value) || 7;
+      const edgeCount = parseInt(edgeCountInput.value) || 11;
+      
+      // Validate user input
+      if (nodeCount < 2 || nodeCount > 15) {
+        alert('Node count must be between 2 and 15.');
+        return;
+      }
+      
+      const maxEdges = nodeCount * (nodeCount - 1);
+      const minEdges = nodeCount - 1; // Need at least a spanning tree
+      if (edgeCount < minEdges || edgeCount > maxEdges) {
+        alert(`Edge count must be between ${minEdges} and ${maxEdges}.`);
+        return;
+      }
+      
+      // Generate new graph data
+      graph = generateRandomGraph(nodeCount, edgeCount);
+      
+      // Re-render the graph
+      renderGraph();
+      updateGraphGeometry();
+      
+      // Reinitialize algorithm state
+      initializeAlgorithm();
+      renderState();
+    });
+
+    // Initialize the application
+    // Generate algorithm steps, render the graph, and display initial state
+    initializeAlgorithm();
+    renderGraph();
+    updateGraphGeometry();
+    renderState();
+  </script>
+</body>
+</html>
+

@@ -32,13 +32,6 @@ This project contains two interactive visualizations of Dial's algorithm for fin
      # or
      http://localhost:8000/DialBucketsTwoLevel.html
      ```
-
-3. **Option 3: Using Node.js http-server**
-   ```bash
-   npx http-server
-   ```
-   Then open the URL shown in the terminal
-
 ## Features
 
 ### DialBuckets.html (Single-Level Buckets)
@@ -94,17 +87,4 @@ The algorithm maintains:
 - Distance array: shortest known distance to each node
 - Bucket structure: nodes organized by distance
 - Settled set: nodes with finalized shortest paths
-
-## Technical Details
-
-- **Language**: HTML5, CSS3, JavaScript (vanilla, no frameworks)
-- **Visualization**: SVG for graph rendering
-- **Compatibility**: Works in all modern browsers
-
-## Notes
-
-- The algorithm starts from node 1 by default
-- Edge weights are integers between 1 and 20
-- The maximum number of nodes is 15
-- The C parameter (maximum bucket index) is calculated dynamically based on the graph
 

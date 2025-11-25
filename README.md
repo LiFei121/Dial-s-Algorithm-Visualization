@@ -8,7 +8,7 @@ This project contains two interactive visualizations of Dial's algorithm for fin
 ## How to Run
 
 ### Prerequisites
-- A modern web browser (Chrome, Firefox, Edge, Safari)
+- A modern web browser (Edge)
 - No additional dependencies or installation required
 
 ### Running the Visualizations
@@ -75,16 +75,3 @@ This project contains two interactive visualizations of Dial's algorithm for fin
 ├── visualPages.css             # Shared CSS styles
 └── bit.png                     # School logo image
 ```
-
-## Algorithm Overview
-
-Dial's algorithm is an efficient shortest path algorithm for graphs with non-negative integer edge weights. It uses a bucket-based data structure where:
-
-- **Single-level**: Nodes are placed in buckets based on their distance from the source
-- **Two-level**: Buckets are organized into blocks (super buckets) for better efficiency
-
-The algorithm maintains:
-- Distance array: shortest known distance to each node
-- Bucket structure: nodes organized by distance
-- Settled set: nodes with finalized shortest paths
-

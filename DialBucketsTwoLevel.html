@@ -511,48 +511,16 @@
   </main>
 
   <script>
-    /**
-     * Dial's Algorithm Visualization - Two-Level Buckets
-     * 
-     * This file implements an interactive visualization of Dial's algorithm
-     * for finding shortest paths in weighted graphs using a two-level bucket structure.
-     * 
-     * Features:
-     * - Interactive graph with draggable nodes
-     * - Step-by-step algorithm visualization
-     * - Two-level bucket structure (super buckets + buckets)
-     * - Adjustable block size parameter
-     * - Play/Pause controls with speed adjustment
-     * - Random graph generation
-     * - Two visualization modes: tracked min_bucket or sequential scan
-     * 
-     * Algorithm: Dial's algorithm with two-level bucket optimization
-     * Data Structure: 
-     *   - Super buckets (blocks): Groups of buckets
-     *   - Buckets: Individual buckets within blocks
-     *   - Bucket index = distance % totalBuckets
-     *   - Block index = floor(distance / blockSize)
-     */
-
-    /**
-     * Calculate the maximum bucket index C for Dial's algorithm
-     * C = max edge weight × (node count - 1)
-     * 
-     * This ensures all possible distances fit within the bucket array.
-     * The two-level bucket structure organizes buckets into blocks for efficiency.
-     * 
-     * @returns {number} The calculated C value (minimum 16, maximum 200)
-     */
+    //Dial's Algorithm Visualization - Two-Level Buckets
     function calculateC() {
       if (graph.edges.length === 0) return 16;
       const maxEdgeWeight = Math.max(...graph.edges.map(e => e.weight));
       const maxPossibleDist = maxEdgeWeight * (graph.nodes.length - 1);
       return Math.min(Math.max(16, maxPossibleDist), 200);
     }
-    // Algorithm parameters
     let C = 16; // Maximum bucket index, calculated dynamically
-    let totalBuckets = C + 1; // Total number of buckets (0 to C)
-    let blockSize = 5; // Number of buckets per super bucket (block)
+    let totalBuckets = C + 1; // Total number of buckets 
+    let blockSize = 5; // Number of buckets per super bucket 
 
     const blockSizeRange = document.getElementById('blockSizeRange');
     const blockSizeValue = document.getElementById('blockSizeValue');
@@ -610,15 +578,7 @@
       ]
     };
 
-    /**
-     * Generate a random undirected graph with specified node and edge counts
-     * Ensures connectivity by first creating a spanning tree, then adding random edges
-     * Uses force-directed layout to position nodes without overlap
-     * 
-     * @param {number} nodeCount - Number of nodes (2-15)
-     * @param {number} edgeCount - Number of edges (must be at least nodeCount-1)
-     * @returns {Object} Graph object with nodes and edges arrays
-     */
+    //Generate a random undirected graph with specified node and edge counts
     function generateRandomGraph(nodeCount, edgeCount) {
       const nodes = [];
       const edges = [];
@@ -836,28 +796,7 @@
       return { nodes, edges };
     }
 
-    /**
-     * Generate all steps for Dial's algorithm with two-level bucket structure
-     * 
-     * Two-level bucket structure:
-     * - Super buckets (blocks): Groups of buckets, block size = b
-     * - Buckets: Individual buckets within each block
-     * - Bucket index = distance % totalBuckets
-     * - Block index = floor(distance / blockSize)
-     * - Local bucket index = distance % blockSize
-     * 
-     * Algorithm steps:
-     * 1. Initialize source node with distance 0
-     * 2. While buckets are not empty:
-     *    a. Find minimum non-empty bucket (scans blocks, then buckets)
-     *    b. Extract node from min_bucket
-     *    c. Mark node as settled
-     *    d. Relax adjacent edges (Insert or DecreaseKey)
-     * 3. All reachable nodes have shortest paths
-     * 
-     * @param {number} sourceNode - Starting node ID (typically 1)
-     * @returns {Array} Array of step objects with block and bucket information
-     */
+    //Generate all steps for Dial's algorithm with two-level bucket structure
     function generateDialSteps(sourceNode) {
       C = calculateC();
       totalBuckets = C + 1;
@@ -1011,15 +950,9 @@
       return steps;
     }
 
-    // Algorithm state
     let steps = []; // Array of algorithm steps
 
-    /**
-     * Create the initial algorithm state
-     * All nodes have infinite distance, no nodes are settled
-     * 
-     * @returns {Object} Initial state object
-     */
+    //Create the initial algorithm state
     const initialState = () => ({
       buckets: Array.from({ length: totalBuckets }, () => []),
       nodeDistances: Object.fromEntries(graph.nodes.map((n) => [n.id, Infinity])),
@@ -1384,13 +1317,7 @@
       });
     }
 
-    /**
-     * Render the super bucket (block) structure
-     * Shows all blocks with their bucket ranges and status
-     * Highlights the active block containing the current operation
-     * 
-     * @param {Object} state - Current algorithm state
-     */
+    //Render the super bucket structure
     function renderSuperBuckets(state) {
       superBucketContainer.innerHTML = '';
       superBucketElements = [];
@@ -1437,19 +1364,12 @@
 
     let focusSuperIndex = 0;
 
-    /**
-     * Render the bucket detail view for the currently focused block
-     * Shows individual buckets within the selected super bucket
-     * Highlights the min_bucket and focus bucket
-     * 
-     * @param {Object} state - Current algorithm state
-     * @param {Object} options - Rendering options (overrideBlock)
-     */
+    //Render the bucket detail view for the currently focused block
     function renderBuckets(state, options = {}) {
       const { overrideBlock = null } = options;
       bucketCellElements = {};
       const totalBlocks = Math.ceil(totalBuckets / blockSize);
-      // Prefer focusBlockIdx (block touched by the current action); otherwise fall back to the block that holds minBucket
+      // Prefer focusBlockIdx; otherwise fall back to the block that holds minBucket
       if (overrideBlock !== null && overrideBlock !== undefined) {
         focusSuperIndex = Math.min(Math.max(overrideBlock, 0), totalBlocks - 1);
       } else if (state.focusBlockIdx !== null && state.focusBlockIdx !== undefined) {
@@ -1649,7 +1569,7 @@
     function updateStatus(state) {
       const totalSteps = steps.length > 0 ? steps.length - 1 : 0;
       
-      // Update the status panel details (mirrors DialBuckets.html format)
+      // Update the status panel details
       if (stepCounterEl) {
         stepCounterEl.textContent = `Step ${currentIndex} / ${totalSteps}`;
       }
@@ -1712,12 +1632,7 @@
       nextBtn.disabled = steps.length === 0 || currentIndex >= steps.length - 1;
     }
 
-    /**
-     * Render the complete visualization state
-     * Updates graph, super buckets, buckets, node styles, and controls
-     * Handles scan animations for sequential scan mode
-     * This is the main rendering function called on each step
-     */
+    //Render the complete visualization state
     function renderState() {
       if (history.length === 0 || currentIndex >= history.length) {
         return;
@@ -1759,11 +1674,7 @@
     let isPlaying = false; // Whether algorithm is currently auto-playing
     let playInterval = null; // Interval ID for auto-play timer
 
-    /**
-     * Toggle auto-play mode
-     * When playing, advances steps automatically at the configured speed
-     * When paused, stops automatic advancement
-     */
+    //Toggle auto-play mode
     function togglePlay() {
       if (isPlaying) {
         if (playInterval) {
@@ -1867,7 +1778,6 @@
       renderState();
     });
 
-    // Initialize the application
     // Generate algorithm steps, render the graph, and display initial state
     initializeAlgorithm();
     renderGraph();

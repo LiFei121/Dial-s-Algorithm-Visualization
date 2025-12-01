@@ -7,12 +7,6 @@ This project contains two interactive visualizations of Dial's algorithm for fin
 
 ## How to Run
 
-### Prerequisites
-- A modern web browser (Edge)
-- No additional dependencies or installation required
-
-### Running the Visualizations
-
 1. **Option 1: Direct File Opening**
    - Simply double-click on either HTML file to open it in your default web browser
    - Or right-click and select "Open with" → choose your preferred browser

@@ -427,42 +427,8 @@
   </main>
 
   <script>
-    /**
-     * Dial's Algorithm Visualization - Single-Level Buckets
-     * 
-     * This file implements an interactive visualization of Dial's algorithm
-     * for finding shortest paths in weighted graphs using a single-level bucket structure.
-     * 
-     * Features:
-     * - Interactive graph with draggable nodes
-     * - Step-by-step algorithm visualization
-     * - Real-time bucket structure display
-     * - Play/Pause controls with speed adjustment
-     * - Random graph generation
-     * - Two visualization modes: tracked min_bucket or sequential scan
-     * 
-     * Algorithm: Dial's algorithm (Dijkstra variant for integer weights)
-     * Data Structure: Array of buckets, where bucket[i] contains nodes with distance i
-     */
+    //Dial's Algorithm Visualization - Single-Level Buckets
 
-    /**
-     * Calculate the maximum bucket index C for Dial's algorithm
-     * C = max edge weight × (node count - 1)
-     * 
-     * Why max edge weight × (node count - 1)?
-     * 1. Dial's algorithm uses a bucket array where bucket index = node distance
-     * 2. The shortest path from source to any node traverses at most (node count - 1) edges
-     *    (since paths cannot have repeated nodes, at most all nodes are visited)
-     * 3. In the worst case, every edge has the maximum edge weight
-     * 4. Therefore, worst-case maximum distance = max edge weight × (node count - 1)
-     * 
-     * Example: 10 nodes, max edge weight = 50
-     * Worst case: source -> node2 -> node3 -> ... -> node10 (9 edges)
-     * Maximum distance = 50 × 9 = 450
-     * So C must be at least 450 to ensure all reachable nodes fit in buckets
-     * 
-     * @returns {number} The calculated C value (minimum 5, maximum 200)
-     */
     function calculateC() {
       if (graph.edges.length === 0) return 5;
       const maxEdgeWeight = Math.max(...graph.edges.map(e => e.weight));
@@ -471,8 +437,7 @@
       // Larger values can be supported by switching to a dynamic bucket array
       return Math.min(Math.max(5, maxPossibleDist), 200);
     }
-    // Algorithm parameters
-    let C = 5; // Maximum bucket index, calculated dynamically based on graph
+    let C = 5; // Maximum bucket index
     
     // DOM element references
     const svg = document.getElementById('graphSvg');
@@ -486,10 +451,9 @@
     const nextBtn = document.getElementById('nextBtn');
     const resetBtn = document.getElementById('resetBtn');
 
-    // Visualization mode: 'tracked' (highlight min bucket) or 'scan' (animate scanning)
+    // Visualization mode: tracked or scan
     let minBucketMode = minBucketModeSelect ? minBucketModeSelect.value : 'tracked';
 
-    // Default graph structure: nodes with positions and edges with weights
     let graph = {
       nodes: [
         { id: 1, label: '1', x: 80, y: 220 },
@@ -515,21 +479,12 @@
       ]
     };
 
-    /**
-     * Generate a random undirected graph with specified node and edge counts
-     * Ensures connectivity by first creating a spanning tree, then adding random edges
-     * Uses force-directed layout to position nodes without overlap
-     * 
-     * @param {number} nodeCount - Number of nodes (2-15)
-     * @param {number} edgeCount - Number of edges (must be at least nodeCount-1 for spanning tree)
-     * @returns {Object} Graph object with nodes and edges arrays
-     */
+    //Generate a random undirected graph with specified node and edge counts
     function generateRandomGraph(nodeCount, edgeCount) {
       const nodes = [];
       const edges = [];
       const edgeSet = new Set(); // Prevent duplicate edges
       
-      // Improved layout selection based on node count
       const svgWidth = 720;
       const svgHeight = 460;
       const padding = 80; // Outer margin around the SVG
@@ -576,7 +531,7 @@
           nodePositions.push({ id: i + 1, x: x, y: y });
         }
         
-        // Inner ring nodes (offset angles to avoid alignment)
+        // Inner ring nodes 
         for (let i = 0; i < innerCount; i++) {
           const angle = (2 * Math.PI * i) / innerCount - Math.PI / 2 + (innerCount > 1 ? Math.PI / innerCount : 0);
           const x = centerX + innerRadius * Math.cos(angle);
@@ -584,8 +539,7 @@
           nodePositions.push({ id: outerCount + i + 1, x: x, y: y });
         }
       } else {
-        // Dense graphs: use an optimized grid layout
-        // Determine grid size from minimum spacing
+        // Dense graphs: use an optimized grid layout,Determine grid size from minimum spacing
         const availableWidth = svgWidth - 2 * padding;
         const availableHeight = svgHeight - 2 * padding;
         const maxCols = Math.floor(availableWidth / minNodeDistance);
@@ -730,7 +684,7 @@
       // Helper to keep edge weights within 1-20
       const randomWeight = () => Math.floor(Math.random() * 20) + 1;
 
-      // Ensure all nodes are reachable from source (node 1) by building a spanning tree
+      // Ensure all nodes are reachable from source by building a spanning tree
       const sourceNode = 1;
       const visited = new Set([sourceNode]);
       const unvisited = new Set();
@@ -738,7 +692,7 @@
         unvisited.add(i);
       }
       
-      // Create spanning tree edges (treating the graph as undirected, normalize IDs)
+      // Create spanning tree edges 
       while (unvisited.size > 0) {
         const from = Array.from(visited)[Math.floor(Math.random() * visited.size)];
         const to = Array.from(unvisited)[Math.floor(Math.random() * unvisited.size)];
@@ -752,7 +706,7 @@
         unvisited.delete(to);
       }
       
-      // Add remaining random edges (undirected, normalized IDs)
+      // Add remaining random edges 
       const maxEdges = nodeCount * (nodeCount - 1) / 2; // Maximum edges for an undirected graph
       const remainingEdges = Math.min(edgeCount - edges.length, maxEdges - edges.length);
       
@@ -782,25 +736,7 @@
       return { nodes, edges };
     }
 
-    /**
-     * Generate all steps for Dial's algorithm execution
-     * Implements Dial's algorithm for shortest paths in a weighted graph
-     * Uses bucket-based data structure for efficient node extraction
-     * 
-     * Algorithm steps:
-     * 1. Initialize source node with distance 0 in bucket 0
-     * 2. While buckets are not empty:
-     *    a. Find minimum non-empty bucket (min_bucket)
-     *    b. Extract node from min_bucket (ExtractMin)
-     *    c. Mark node as settled (shortest path found)
-     *    d. Relax all adjacent edges:
-     *       - If neighbor unvisited: Insert into appropriate bucket
-     *       - If shorter path found: DecreaseKey (move to lower bucket)
-     * 3. All reachable nodes now have shortest paths
-     * 
-     * @param {number} sourceNode - Starting node ID (typically 1)
-     * @returns {Array} Array of step objects describing algorithm execution
-     */
+    //Generate all steps for Dial's algorithm execution,Implements Dial's algorithm for shortest paths in a weighted graph
     function generateDialSteps(sourceNode) {
       // Recompute C dynamically for the current graph
       C = calculateC();
@@ -810,12 +746,6 @@
       const settled = new Set();
       const nodeInBucket = new Set(); // Track which nodes currently reside in buckets
       
-      /**
-       * Dynamically expand bucket array if required index exceeds current capacity
-       * This handles cases where distances exceed the initial C estimate
-       * 
-       * @param {number} requiredIndex - Required bucket index
-       */
       function ensureBucketCapacity(requiredIndex) {
         if (requiredIndex > C) {
           const oldC = C;
@@ -857,12 +787,12 @@
           break;
         }
         
-        // Extract node from the minimal bucket (FIFO order)
+        // Extract node from the minimal bucket
         const currentNode = buckets[minBucket].shift();
         nodeInBucket.delete(currentNode);
         
         if (settled.has(currentNode)) {
-          // Skip if node already settled (can happen after DecreaseKey)
+          // Skip if node already settled 
           continue;
         }
         
@@ -874,15 +804,15 @@
           description: `Bucket ${minBucket} is the current min_bucket; extract node ${currentNode} and mark it settled (shortest distance = ${distances[currentNode]}).`
         });
         
-        // Relax every adjacent edge (treat graph as undirected here)
+        // Relax every adjacent edge 
         const adjacentEdges = graph.edges.filter((e) => 
           e.from === currentNode || e.to === currentNode
         );
         for (const edge of adjacentEdges) {
-          // Determine neighbor (edges can be stored either direction)
+          // Determine neighbor 
           const neighbor = edge.from === currentNode ? edge.to : edge.from;
           
-          // Skip neighbors already settled (Dijkstra invariant)
+          // Skip neighbors already settled 
           if (settled.has(neighbor)) {
             continue;
           }
@@ -1025,10 +955,7 @@
     let steps = []; // Array of algorithm steps generated by generateDialSteps()
     let history = []; // Array of states, one per step
 
-    /**
-     * Initialize the algorithm by generating steps and building state history
-     * Called when graph changes or algorithm resets
-     */
+    //Initialize the algorithm by generating steps and building state history
     function initializeAlgorithm() {
       steps = generateDialSteps(1);
       history = [initialState()];
@@ -1049,9 +976,9 @@
     const edgeElements = new Map(); // Maps edge ID to SVG elements
     
     // Scan animation parameters
-    const SCAN_TOTAL_BUDGET = 2400; // Total time budget for scan animation (ms)
-    const SCAN_MIN_DELAY = 60; // Minimum delay between scan steps (ms)
-    const SCAN_MAX_DELAY = 220; // Maximum delay between scan steps (ms)
+    const SCAN_TOTAL_BUDGET = 2400; // Total time budget for scan animation 
+    const SCAN_MIN_DELAY = 60; // Minimum delay between scan steps 
+    const SCAN_MAX_DELAY = 220; // Maximum delay between scan steps 
     let latestBucketRows = []; // DOM elements for bucket rows
     let scanAnimationTimeouts = []; // Timeout IDs for scan animations
 
@@ -1066,11 +993,8 @@
       edgeElements.clear();
     }
 
-    /**
-     * Render the graph visualization using SVG
-     * Creates nodes (circles with labels) and edges (lines with weight labels)
-     * Sets up drag-and-drop functionality for nodes
-     */
+    
+    //Render the graph visualization using SVG
     function renderGraph() {
       clearGraph();
       
@@ -1352,7 +1276,7 @@
       });
 
       nodeElements.forEach(({ node, circle, label, distLabel }) => {
-        // Update node, label, and distance positions (dragging can exceed bounds)
+        // Update node, label, and distance positions 
         circle.setAttribute('cx', node.x);
         circle.setAttribute('cy', node.y);
         label.setAttribute('x', node.x);
@@ -1360,17 +1284,10 @@
         distLabel.setAttribute('x', node.x);
         distLabel.setAttribute('y', node.y + 40);
         
-        // Labels may clip if nodes leave the viewport; acceptable for this demo
       });
     }
 
-    /**
-     * Render the bucket structure display
-     * Shows all buckets with their contents (node IDs)
-     * Highlights the current min_bucket and scanning buckets
-     * 
-     * @param {Object} state - Current algorithm state
-     */
+    //Render the bucket structure display
     function renderBuckets(state) {
       bucketListEl.innerHTML = '';
       latestBucketRows = [];
@@ -1515,11 +1432,7 @@
       nextBtn.disabled = steps.length === 0 || currentIndex >= steps.length - 1;
     }
 
-    /**
-     * Render the complete visualization state
-     * Updates graph, buckets, node styles, text descriptions, and controls
-     * This is the main rendering function called on each step
-     */
+    //Render the complete visualization state
     function renderState() {
       if (history.length === 0 || currentIndex >= history.length) {
         return;
@@ -1548,18 +1461,12 @@
     const progressBar = document.getElementById('progressBar');
     const statsInfo = document.getElementById('statsInfo');
 
-    /**
-     * Update the progress bar to reflect current step position
-     */
+    //Update the progress bar to reflect current step position
     function updateProgress() {
       const progress = steps.length > 0 ? (currentIndex / (steps.length - 1)) * 100 : 0;
       progressBar.style.width = progress + '%';
     }
 
-    /**
-     * Update statistics panel with current algorithm state
-     * Shows: settled nodes, reachable nodes, total steps, current step
-     */
     function updateStats() {
       if (history.length === 0 || currentIndex >= history.length) return;
       const state = history[currentIndex];
@@ -1575,11 +1482,7 @@
       `;
     }
 
-    /**
-     * Toggle auto-play mode
-     * When playing, advances steps automatically at the configured speed
-     * When paused, stops automatic advancement
-     */
+    //When playing, advances steps automatically at the configured speed;When paused, stops automatic advancement
     function togglePlay() {
       if (isPlaying) {
         // Pause
@@ -1686,7 +1589,6 @@
       renderState();
     });
 
-    // Initialize the application
     // Generate algorithm steps, render the graph, and display initial state
     initializeAlgorithm();
     renderGraph();
